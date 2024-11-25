@@ -14,6 +14,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r setup, message=FALSE, warning=FALSE}
 library(sf)
 library(tidyverse)
+library(tmap)
+library(car)
 ```
 
 **Overview:**
@@ -25,6 +27,7 @@ Let's import the dataset.
 
 ```{r}
 lab6_data<-st_read("data/aus_climate_inat.gpkg")
+write.csv(lab6_data, file = "lab6_data.csv", row.names = FALSE)
 ```
 
 The dataset for this lab is a 1 decimal degree hexagon grid that has aggregate statistics for a number of variables:
@@ -48,70 +51,126 @@ We will start by looking at data for 2020.
 **Question 1** _Create histograms for NDVI, max temp., min temp., rain, and population, and water in 2020 as well as elevation. Based on these graphs, assess the normality of these variables._
 
 ```{r}
-#Code goes here.
+variables <- c("ndvi_20_med","maxtemp_20_med","mintemp_20_med","rain_20_sum","pop_20","water_20_pct","elev_med")
+
+for (var in variables) {
+  hist(lab6_data[[var]],
+  main = paste("Histogram of", var))
+}
 ```
 
-{Your assessment of the variables' normality goes here.}
+{Overall, the distributions of these variables deviate from normality, showing varying degrees of skewness. NDVI, rainfall, population, and water coverage are positively skewed, while min/max temperatures are negatively skewed.}
 
 **Question 2** _Use tmap to map these same variables using Jenks natural breaks as the classification method. For an extra challenge, use `tmap_arrange` to plot all maps in a single figure._
 
 ```{r}
+map <- list()
 
+for(var in variables) {
+  map[[var]] <- tm_shape(lab6_data)+
+    tm_polygons(var,style = "jenks", title = var)+
+    tm_layout(legend.position = c("left","bottom"))
+}
+
+tmap_arrange(map, ncol = 2)
 ```
 
 
 **Question 3** _Based on the maps from question 3, summarise major patterns you see in the spatial distribution of these data from any of your variables of interest. How do they appear to be associated with the NDVI variable?_
 
-{Your response here.}
+{Higher NDVI values are concentrated along the eastern and southeastern parts of Australia. This spatial pattern aligns with higher values of rainfall (rain_20_sum), population (pop_20), and elevation (elev_med), which are also concentrated in these regions. These overlaps suggest a positive relationship between NDVI and these variables.}
 
 **Question 4** _Create univariate models for each of the variables listed in question 1, with NDVI in 2020 as the dependent variable. Print a summary of each model. Write a summary of those results that indicates the direction, magnitude, and significance for each model coefficient._
 
 ```{r}
+variables1 <- c("maxtemp_20_med","mintemp_20_med","rain_20_sum","pop_20","water_20_pct","elev_med")
 
+uni_model <- list()
+
+for(var in variables1) {
+  uni_model[[var]] <-
+    lm(as.formula(paste("ndvi_20_med ~", var)), data = lab6_data)
+}
+
+for (var in variables1) {
+  cat(var)
+print(summary(uni_model[[var]]))}
 ```
 
-{Discussion here}
+{For maxtemp, the coefficient is -0.0131, which means that for every 1°C increase in maximum temperature, NDVI decreases by 0.0131. The p-value (<0.05) indicates that this relationship is statistically significant.
+
+For mintemp, the coefficient is -0.0123, indicating that for every 1°C increase in minimum temperature, NDVI decreases by 0.0123. This relationship is also statistically significant, with a p-value (<0.05).
+
+For rainfall, the coefficient is 9.124 × 10⁻⁷, meaning that for every 1 mm increase in rainfall, NDVI increases by a very small amount. This relationship is highly significant, with a p-value (<0.05).
+
+For water coverage, the coefficient is -0.1783, meaning that for every 1% increase in water coverage, NDVI decreases by 0.1783. However, this relationship is not statistically significant, with a p-value (0.249) greater than 0.05.
+
+For population, the coefficient is 1.500 × 10⁻⁶, indicating that for every 1 additional person in the population (or per 1,000, 100,000, etc., depending on the scale), NDVI increases by a very small amount. This relationship is statistically significant, with a p-value (<0.05)
+
+For elevation, the coefficient is 0.0001787, indicating that for every 1 meter increase in elevation, NDVI increases by 0.0001787. This relationship is statistically significant, with a p-value (<0.05).}
 
 **Question 5** _Create a multivariate regression model with the variables of interest, choosing EITHER max or min temperature (but not both) You may also choose to leave out any variables that were insignificant in Q4. Use the univariate models as your guide. Call the results._
 
 ```{r}
 #Code goes here
+model_all <- lm(ndvi_20_med~mintemp_20_med+rain_20_sum+pop_20+elev_med, data = lab6_data)
+summary(model_all)
 ```
 
 **Question 6** _Summarize the results of the multivariate model. What are the direction, magnitude, and significance of each coefficient? How did it change from the univariate models you created in Q4 (if at all)? What do the R2 and F-statistic values tell you about overall model fit?_
 
-{Response goes here}
+{Overall, the relationship between these variables and NDVI are statistically significant (p<0.05):
+
+For every 1°C increase in minimum temperature, NDVI decreases by 0.0139. The coefficient remained similar to the univariate model.
+
+For every 1 mm increase in rainfall, NDVI increases by slightly (0.0000009420). This coefficient is very similar to that of the univariate model in Q4.
+
+There is a positive relationship between population and NDVI. The coefficient is smaller compared to the univariate model, suggesting that other variables may explain some of the variation previously attributed to population. 
+
+For every 1 meter increase in elevation, NDVI increases by 0.0001028.  The coefficient is slightly smaller compared to the univariate model. 
+
+R-square (0.6507): The model explains 65.07% of the variance in NDVI, which seems like a good fit.
+
+F-Statistic (331.1, p< 0.05)
+The F-statistic tests whether the overall model is significant. Base of the f-stat value and p value, we can conclude that the model as a whole is statistically significant.}
 
 **Question 7** _Use a histogram and a map to assess the normality of residuals and any spatial autocorrelation. Summarise any notable patterns that you see._
 
 ```{r}
-#Code goes here
+lab6_data$residuals<-residuals(model_all)
+
+ggplot(lab6_data,aes(x=residuals))+
+  geom_histogram(fill= "black")
+
+tm_shape(lab6_data)+
+  tm_dots("residuals",size = 0.2)
+
 ```
 
-{Summary goes here}
+{From the histogram, there are a few outliers in the tails (more on the left side). However, the majority of residuals are tightly clustered near zero. This suggests that the residuals are relatively normally distributed
+From the map, the residuals are mostly close to zero (indicated by light green), suggesting that the model performs well across much of the area. However, at the periphery, there are noticeable clusters of negative residuals (red and orange). These spatial patterns suggest the presence of spatial autocorrelation, indicating that the residuals are not randomly distributed.}
 
 **Question 8** _Assess any issues with multicollinearity or heteroskedastity in this model using the techniques shown in class. Run the appropriate tests and explain what their results show you._
 
 ```{r}
-#Code goes here
+vif(model_all)
 ```
 
-{Interpretation goes here}
+{The VIF results for the all variables are below 2, which indicates no significant multicollinearity in this model.}
 
 **Question 9** _How would you summarise the results of this model in a sentence or two? In addition, looking at the full model and your diagnostics, do you feel this is a model that provides meaningful results? Explain your answer._
 
-```{r}
-Discussion here
-```
+
+{Based on the  r-square value, 65% of the variations in NDVI can be explained by this model, which suggest that it provides meaningful results. Also, all predictor variables are statistically significant  and the F-statistic is highly significant (p < 2.2e-16), confirming that the model as a whole is meaningful.}
 
 
 **Disclosure of assistance:** _Besides class materials, what other sources of assistance did you use while completing this lab? These can include input from classmates, relevant material identified through web searches (e.g., Stack Overflow), or assistance from ChatGPT or other AI tools. How did these sources support your own learning in completing this lab?_
 
-{Response here.}
+{For this lab exercise, I used ChatGPT to understand how to create a loop for generating maps and to troubleshoot error codes i got while running new functions.}
 
 **Lab reflection:** _How do you feel about the work you did on this lab? Was it easy, moderate, or hard? What were the biggest things you learned by completing it?_
 
-{Discussion here.}
+{I feel confident about the work I completed for this lab. Overall, I would rate it as moderate in difficulty because it took some time to complete it. The biggest things I learned were how to create loops for efficient plotting and modeling and interpreting regression output meaningfully.}
 
 
 **Challenge question**
@@ -120,10 +179,34 @@ Discussion here
 Create a first difference model. To do that, subtract the values in 2000 from the values in 2020 for each variable for which that is appropriate. Then create a new model similar to the one you created in question 5, but using these new variables showing the *change in values* over time. Call the results of the model, and interpret the results in the same ways you did above. Also chart and map the residuals to assess model error. Finally, write a short section that summarises what, if anything, this model tells you. 
 
 ```{r}
+difference<- lab6_data %>%
+  mutate(ndvi_diff = ndvi_20_med-ndvi_00_med,
+         maxtemp_diff = maxtemp_20_med - maxtemp_00_med,
+         mintemp_diff = mintemp_20_med - mintemp_00_med,
+         rain_diff = rain_20_sum - rain_00_sum,
+         pop_diff = pop_20 - pop_00,
+         water_diff = water_20_pct - water_00_pct)
+
+difference_select <- difference %>%
+  select("ndvi_diff","maxtemp_diff","mintemp_diff","rain_diff","pop_diff","water_diff")
+
+modeldiff<- lm(ndvi_diff~maxtemp_diff+mintemp_diff+rain_diff+pop_diff+water_diff,data= difference_select)
+summary(modeldiff)
+
+difference_select$residuals <- residuals(modeldiff)
+
+ggplot(difference_select, aes(x= residuals))+
+  geom_histogram(fill = "blue")
+
+tm_shape(difference_select)+
+  tm_dots("residuals",size = 0.2)
+
 
 ```
+{The R-squared value indicates that the model explains about 10.6% of the variation in changes in NDVI. Compared to the other models run, this is not the best for providing meaningful results, even though the F-statistic (16.86, p < 0.001) confirms that the model as a whole is statistically significant. Regarding predictors, only the variables, mintemp_diff and rain_diff, are statistically significant.
 
-
+From the histogram, there are a few outliers in the tails. However, the majority of residuals are tightly clustered near zero. This suggests that the residuals are relatively normally distributed
+From the map, the residuals are mostly close to zero (indicated by light green and yellow), suggesting that the model performs well across much of the area.There is also a cluster of larger residuals in the southeast region, which suggest that the model performs poorly in that area.}
 
 
 #Option 2
