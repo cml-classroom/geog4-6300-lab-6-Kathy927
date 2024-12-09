@@ -8,6 +8,7 @@ library(sf)
 library(tidyverse)
 library(tmap)
 library(car)
+library(lmtest)
 ```
 
 **Overview:** This lab focuses on regression techniques. You’ll be
@@ -391,8 +392,24 @@ vif(model_all)
     ## mintemp_20_med    rain_20_sum         pop_20       elev_med 
     ##       1.127167       1.121045       1.183240       1.015657
 
+``` r
+bptest(model_all)
+```
+
+    ## 
+    ##  studentized Breusch-Pagan test
+    ## 
+    ## data:  model_all
+    ## BP = 120.07, df = 4, p-value < 2.2e-16
+
 {The VIF results for the all variables are below 2, which indicates no
-significant multicollinearity in this model.}
+significant multicollinearity in this model.
+
+Since the p-value is extremely small (\< 2.2e-16), we reject the null
+hypothesis that the residuals have constant variance. This indicates
+heteroskedasticity in the model, meaning the variability of the
+residuals changes across observations. This can make some parts of this
+model less reliable for drawing conclusions.}
 
 **Question 9** *How would you summarise the results of this model in a
 sentence or two? In addition, looking at the full model and your

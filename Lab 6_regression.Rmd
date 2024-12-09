@@ -16,6 +16,7 @@ library(sf)
 library(tidyverse)
 library(tmap)
 library(car)
+library(lmtest)
 ```
 
 **Overview:**
@@ -154,9 +155,14 @@ From the map, the residuals are mostly close to zero (indicated by light green),
 
 ```{r}
 vif(model_all)
+
+bptest(model_all)
+
 ```
 
-{The VIF results for the all variables are below 2, which indicates no significant multicollinearity in this model.}
+{The VIF results for the all variables are below 2, which indicates no significant multicollinearity in this model.
+
+Since the p-value is extremely small (< 2.2e-16), we reject the null hypothesis that the residuals have constant variance. This indicates heteroskedasticity in the model, meaning the variability of the residuals changes across observations. This can make some parts of this model less reliable for drawing conclusions.}
 
 **Question 9** _How would you summarise the results of this model in a sentence or two? In addition, looking at the full model and your diagnostics, do you feel this is a model that provides meaningful results? Explain your answer._
 
