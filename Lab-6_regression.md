@@ -405,11 +405,11 @@ bptest(model_all)
 {The VIF results for the all variables are below 2, which indicates no
 significant multicollinearity in this model.
 
-Since the p-value is extremely small (\< 2.2e-16), we reject the null
-hypothesis that the residuals have constant variance. This indicates
-heteroskedasticity in the model, meaning the variability of the
-residuals changes across observations. This can make some parts of this
-model less reliable for drawing conclusions.}
+For the Breusch-Pagan test, since the p-value is extremely small (\<
+2.2e-16), we reject the null hypothesis that the residuals have constant
+variance. This indicates heteroskedasticity in the model, meaning the
+variability of the residuals changes across observations. This can make
+some parts of this model less reliable for drawing conclusions.}
 
 **Question 9** *How would you summarise the results of this model in a
 sentence or two? In addition, looking at the full model and your
